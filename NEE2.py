@@ -6,7 +6,7 @@ import random
 import csv
 import os
 
-ports_live = None # Set to None if parallel ports not plugged for coding/debugging other parts of exp
+ports_live = True # Set to None if parallel ports not plugged for coding/debugging other parts of exp
 
 ### Experiment details/parameters
 # misc parameters
@@ -116,7 +116,7 @@ stim_trig = {"TENS": 128, "control": 0} #Pin 8 TENS in AD instrument
 
 if ports_live == True:
     s = serial.Serial('COM3', baudrate=128000, timeout=0.01)
-    s.write('WRITE 0\n')    
+    s.write(b'WRITE 0\n')    
     
 elif ports_live == None:
     s = None #Get from device Manager
@@ -128,6 +128,8 @@ win = visual.Window(
     monitor="testMonitor", color=[0, 0, 0], colorSpace="rgb1",
     blendMode="avg", useFBO=True,
     units="pix")
+
+mouse = event.Mouse(visible=True)
 
 # fixation stimulus
 fix_stim = visual.TextStim(win,
@@ -252,7 +254,7 @@ def termination_check(): #insert throughout experiment so participants can end a
     keys_pressed = event.getKeys(keyList=["escape"])  # Check for "escape" key during countdown
     if "escape" in keys_pressed:
         if ports_live:
-            s.write('WRITE 0\n')  # Set all pins to 0 to shut off TENS, shock etc.
+            s.write(b'WRITE 0\n')  # Set all pins to 0 to shut off TENS, shock etc.
         # Save participant information
 
         save_data(trial_order)
@@ -622,7 +624,6 @@ def show_calib_trial(trial_order):
             for button_name in buttons_keylist:
                 buttons["confirm"][button_name].draw()
                 button_text["confirm"][button_name].draw()
-            mouse = event.Mouse()
             mouse.clickReset()
             win.flip()
             
@@ -657,13 +658,13 @@ def show_calib_trial(trial_order):
         
         # show fixation stimulus + deliver shock
         if s != None:
-            s.write('WRITE 0\n') 
+            s.write(b'WRITE 0\n') 
 
         fix_stim.draw()
         win.flip()
         
         if s != None:
-            s.write(('WRITE '+str(shock_trig["high"])+' '+str(port_buffer_duration)+' 0\n').encode('utf-8'))
+            s.write(b'WRITE ' + str(shock_trig["high"]).encode('utf-8') + b' ' + str(port_buffer_duration).encode('utf-8') + b' 0\n')
         
         # Get pain rating
         while calib_rating.getRating() is None: # while mouse unclicked
@@ -711,7 +712,6 @@ def show_calib_trial(trial_order):
         
         # Wait for a mouse click
         trial_finish = False
-        mouse = event.Mouse()
         mouse.clickReset()
         
         while trial_finish == False:
@@ -740,7 +740,7 @@ def show_calib_trial(trial_order):
 
 def show_trial(current_trial):
     if s != None:
-        s.write('WRITE 0\n')
+        s.write(b'WRITE 0\n')
         
     win.flip()
     
@@ -759,7 +759,6 @@ def show_trial(current_trial):
         win.flip()
 
         choice_finish = False
-        mouse = event.Mouse()
 
         while choice_finish == False:
             termination_check()
@@ -803,7 +802,7 @@ def show_trial(current_trial):
                 for time, port in TENS_pulse_patterns[current_trial["trialtype"]]:
                     termination_check()
                     if abs(countdown_timer.getTime() - math.floor(countdown_timer.getTime()) - time) < timer_precision_range:
-                        s.write(('WRITE '+str(port)+' 0\n').encode('utf-8'))
+                        s.write(b'WRITE '+str(port).encode('utf-8') + b' 0\n')
         countdown_text[str(int(math.ceil(countdown_timer.getTime())))].draw()
         win.flip()
 
@@ -816,7 +815,7 @@ def show_trial(current_trial):
                 for time, port in TENS_pulse_patterns[current_trial["trialtype"]]:
                     termination_check()
                     if abs(countdown_timer.getTime() - math.floor(countdown_timer.getTime()) - time) < timer_precision_range:
-                        s.write(('WRITE '+str(port)+' 0\n').encode('utf-8'))
+                        s.write(b'WRITE '+str(port).encode('utf-8') + b' 0\n')
         countdown_text[str(int(math.ceil(countdown_timer.getTime())))].draw()
         
         # Ask for expectancy rating
@@ -828,18 +827,14 @@ def show_trial(current_trial):
     exp_rating.reset() #resets the expectancy slider for subsequent trials
         
     # deliver shock
-    if set != None:
-        s.write(('WRITE '+str(port)+' 0\n').encode('utf-8'))
+    if s != None:
+        s.write(b'WRITE 0\n')
+        
     fix_stim.draw()
     win.flip()
     
     if s != None:
-        s.write(('WRITE '+str(shock_trig[current_trial["outcome"]])+' '+str(port_buffer_duration)+' 0\n').encode('utf-8'))
-        
-    wait(port_buffer_duration)
-
-    if s != None:
-        s.write('WRITE 0\n')
+        s.write(b'WRITE '+ str(shock_trig[current_trial["outcome"]]).encode('utf-8') + b' '+ str(port_buffer_duration).encode('utf-8') + b' 0\n') 
 
     # Get pain rating
     while pain_rating.getRating() is None: # while mouse unclicked
@@ -866,26 +861,25 @@ def show_trial(current_trial):
 
 exp_finish = False
 
-
 # Run experiment
 while not exp_finish:
     termination_check()
     # display welcome and calibration instructions
-    instruction_trial(instructions_text["welcome"],3)
-    instruction_trial(instructions_text["TENS_introduction"],3)
-    instruction_trial(instructions_text["calibration"],8)
+    # instruction_trial(instructions_text["welcome"],3)
+    # instruction_trial(instructions_text["TENS_introduction"],3)
+    # instruction_trial(instructions_text["calibration"],8)
     
-    show_calib_trial(calib_trial_order)
+    # show_calib_trial(calib_trial_order)
     
-    instruction_trial(instructions_text["calibration_finish"],3)
+    # instruction_trial(instructions_text["calibration_finish"],3)
     
     #display main experiment phase
-    instruction_trial(instructions_text["experiment"],10)
+    # instruction_trial(instructions_text["experiment"],10)
     for trial in trial_order:
     # for trial in [t for t in trial_order if t["phase"] == "extinction"]: #for testing extinction
         show_trial(trial)
 
-    s.write('WRITE 0\n') # Set all pins to 0 to shut off TENS, shock etc.    
+    s.write(b'WRITE 0\n') # Set all pins to 0 to shut off TENS, shock etc.    
     # # save trial data
     save_data(trial_order)
     exit_screen(instructions_text["end"])
