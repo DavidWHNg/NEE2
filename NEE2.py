@@ -15,10 +15,10 @@ iti = 3
 pain_response_duration = float("inf")
 response_hold_duration = 1 # How long the rating screen is left on the response (only used for Pain ratings)
 TENS_trig = 128
-TENS_pulse_pattern_list = {"pause": [(0.0, TENS_trig), (0.1, 0), # 3 rapid pulses followed by pause, first number specifies time in seconds, second number port send value
-                                 (0.2, TENS_trig), (0.3, 0),
-                                 (0.4, TENS_trig), (0.5, 0)],
-                       "constant": [(0.0, TENS_trig), (0.10, 0),
+TENS_pulse_pattern_list = {"pause": [(1.0, TENS_trig), (0.1, 0), # 3 rapid pulses followed by pause, first number specifies time in seconds, second number port send value
+                                 (0.6, TENS_trig), (0.7, 0),
+                                 (0.8, TENS_trig), (0.9, 0)],
+                       "constant": [(1.0, TENS_trig), (0.10, 0),
                                 (0.333, TENS_trig), (0.433, 0),
                                 (0.666, TENS_trig), (0.766, 0)] # constant equally spaced pulses 
 }
@@ -26,7 +26,7 @@ TENS_image_size = (400,300)
 TENS_image_pos = (0,200)
 TENS_text_pos = (0,300)
 
-timer_precision_range = 0.01 # pulses should be accurate to within 10 milliseconds
+timer_precision_range = 0.009 # range to update tens triggers
 
 TENS_names = ["monopolar", "bipolar"]
 
@@ -207,7 +207,7 @@ def instruction_trial(instructions,holdtime):
     event.waitKeys(keyList=["space"])
     win.flip()
     
-    wait(iti)
+    wait(3)
     
 # Create functions
     # Save responses to a CSV file
@@ -633,17 +633,16 @@ def show_calib_trial(trial_order):
             
             while choice_finish == False:
                 for button_name in buttons_keylist:
-                        if mouse.isPressedIn(buttons["confirm"][button_name]):
-                            if button_name == "Yes":
-                                choice_finish = True
-                                previous_trial = False
-                                wait(iti)
-                                break
-                            elif button_name == "No":
-                                choice_finish = True
-                                calib_finish = True
-                                wait(iti)
-                                return
+                    termination_check()
+                    if mouse.isPressedIn(buttons["confirm"][button_name]):
+                        if button_name == "Yes":
+                            choice_finish = True
+                            previous_trial = False
+                        elif button_name == "No":
+                            choice_finish = True
+                            calib_finish = True
+                            previous_trial = False
+            wait(3)
             
         # Wait for participant to ready up for shock
         visual.TextStim(win,
@@ -659,12 +658,14 @@ def show_calib_trial(trial_order):
         # show fixation stimulus + deliver shock
         if s != None:
             s.write(b'WRITE 0\n') 
-
+            
         fix_stim.draw()
         win.flip()
-        
+
         if s != None:
             s.write(b'WRITE ' + str(shock_trig["high"]).encode('utf-8') + b' ' + str(port_buffer_duration).encode('utf-8') + b' 0\n')
+        
+        wait(1)
         
         # Get pain rating
         while calib_rating.getRating() is None: # while mouse unclicked
@@ -684,7 +685,7 @@ def show_calib_trial(trial_order):
         current_trial["pain_response"] = calib_rating.getRating()
         calib_rating.reset()
         win.flip()
-        wait(iti)
+        wait(3)
 
         # Feedback text
         if shock_trig["high"] == 1:
@@ -736,7 +737,7 @@ def show_calib_trial(trial_order):
                     trial_finish = True
                     mouse.clickReset()                        
         win.flip()
-        wait(iti)
+        wait(3)
 
 def show_trial(current_trial):
     if s != None:
@@ -836,6 +837,8 @@ def show_trial(current_trial):
     if s != None:
         s.write(b'WRITE '+ str(shock_trig[current_trial["outcome"]]).encode('utf-8') + b' '+ str(port_buffer_duration).encode('utf-8') + b' 0\n') 
 
+    wait(1)
+    
     # Get pain rating
     while pain_rating.getRating() is None: # while mouse unclicked
         termination_check()
@@ -865,16 +868,16 @@ exp_finish = False
 while not exp_finish:
     termination_check()
     # display welcome and calibration instructions
-    # instruction_trial(instructions_text["welcome"],3)
-    # instruction_trial(instructions_text["TENS_introduction"],3)
-    # instruction_trial(instructions_text["calibration"],8)
+    instruction_trial(instructions_text["welcome"],3)
+    instruction_trial(instructions_text["TENS_introduction"],3)
+    instruction_trial(instructions_text["calibration"],8)
     
-    # show_calib_trial(calib_trial_order)
+    show_calib_trial(calib_trial_order)
     
-    # instruction_trial(instructions_text["calibration_finish"],3)
+    instruction_trial(instructions_text["calibration_finish"],3)
     
-    #display main experiment phase
-    # instruction_trial(instructions_text["experiment"],10)
+    # display main experiment phase
+    instruction_trial(instructions_text["experiment"],10)
     for trial in trial_order:
     # for trial in [t for t in trial_order if t["phase"] == "extinction"]: #for testing extinction
         show_trial(trial)
